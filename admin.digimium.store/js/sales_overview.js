@@ -602,14 +602,14 @@ document
     });
 
     // When your UI hides/clears the input, reset the view
-    input.addEventListener("blur", () => {
-      setTimeout(() => {
-        if (!input.value) {
-          currentQuery = "";
-          renderViewport(allRows);
-        }
-      }, 140);
-    });
+    // input.addEventListener("blur", () => {
+    //   setTimeout(() => {
+    //     if (!input.value) {
+    //       currentQuery = "";
+    //       renderViewport(allRows);
+    //     }
+    //   }, 140);
+    // });
   }
 
   // ---------------- TABLE RENDER (desktop) ----------------
