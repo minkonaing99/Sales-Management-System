@@ -15,7 +15,7 @@ Rewritten admin panel foundation that preserves current frontend pages, UI/UX, a
 
 1. Copy `.env.example` to `.env`.
 2. Set database credentials in `.env`.
-3. Optionally set `DIGIMIUM_STOREFRONT_PATH` if storefront is not at sibling `../digimium.store`.
+3. Optionally set `DIGIMIUM_STOREFRONT_PATH` if storefront is not at sibling `../storefront`.
 4. Serve this directory via Apache/PHP as before.
 
 ## Compatibility

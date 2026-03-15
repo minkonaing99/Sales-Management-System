@@ -824,10 +824,10 @@ class ProductShowcase {
   /** Normalizes stored photo paths to public image URLs. */
   getImageUrl(photoUrl) {
     // Convert relative path to absolute URL for browser access
-    if (photoUrl && photoUrl.startsWith("../../digimium.store/")) {
+    if (photoUrl && photoUrl.startsWith("../../storefront/")) {
       // Convert to cross-domain URL
       const convertedUrl = photoUrl.replace(
-        "../../digimium.store/",
+        "../../storefront/",
         "https://digimium.store/"
       );
       return convertedUrl;
