@@ -1,6 +1,6 @@
-# Digimium
+# Digital Subscription Management System
 
-Digimium is a digital subscription management system built around three connected parts:
+This project is a digital subscription management system built around three connected parts:
 
 - a customer-facing storefront for browsing subscription services
 - an internal admin dashboard for managing products, sales, renewals, and staff access
@@ -108,7 +108,7 @@ Key functions:
 
 ## Core Business Use Cases
 
-Digimium supports the typical workflow of a subscription-selling business:
+The system supports the typical workflow of a subscription-selling business:
 
 1. maintain a product catalog with pricing and renewal metadata
 2. publish offerings through the storefront
@@ -120,7 +120,7 @@ Digimium supports the typical workflow of a subscription-selling business:
 
 ## What The Project Solves
 
-This project is built to reduce friction in subscription operations. Instead of relying on scattered manual records, Digimium organizes products, sales, renewal timing, and reporting into a single workflow.
+This project is built to reduce friction in subscription operations. Instead of relying on scattered manual records, it organizes products, sales, renewal timing, and reporting into a single workflow.
 
 In practical terms, the system helps:
 
@@ -150,4 +150,4 @@ digimium/
 
 ## Summary
 
-Digimium is a small business operations platform for digital subscription sales. Its storefront helps present products clearly, its admin dashboard handles the operational workload, and its Telegram bot extends reporting and renewal monitoring into a faster communication channel.
+This repository contains a small business operations platform for digital subscription sales. Its storefront helps present products clearly, its admin dashboard handles the operational workload, and its Telegram bot extends reporting and renewal monitoring into a faster communication channel.
