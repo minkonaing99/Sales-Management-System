@@ -1,12 +1,17 @@
-// user_list.js - Handle user list population for both web users and bot users
+/**
+ * Module: User management screen controller.
+ * Purpose: Loads web/bot users, renders desktop + mobile lists, and handles
+ * user creation and delete actions.
+ */
 
 document.addEventListener("DOMContentLoaded", function () {
   loadAllUsers();
   setupUserSettingsToggle();
   setupUserCreationForm();
-  setupDeleteUserHandler(); // ✅ new centralized delete handler
+  setupDeleteUserHandler(); // Shared delete binding for desktop + mobile buttons.
 });
 
+/** Binds toggle behavior for user-settings panel visibility. */
 function setupUserSettingsToggle() {
   const userSettingBtn = document.getElementById("userSettingBtn");
   const userSettingForm = document.getElementById("user_setting");
@@ -19,6 +24,7 @@ function setupUserSettingsToggle() {
   }
 }
 
+// Fetches merged web/bot users from backend and refreshes both UI layouts.
 async function loadAllUsers() {
   try {
     const response = await fetch("./api/user_list.php");
@@ -35,6 +41,7 @@ async function loadAllUsers() {
   }
 }
 
+// Desktop table renderer.
 function populateUserTable(users) {
   const tbody = document.getElementById("user_list");
   if (!tbody) return;
@@ -68,6 +75,7 @@ function populateUserTable(users) {
   });
 }
 
+// Mobile card renderer.
 function populateUserMobile(users) {
   const container = document.getElementById("user-list");
   if (!container) return;
@@ -116,13 +124,14 @@ function populateUserMobile(users) {
   });
 }
 
+// Escapes user-provided fields before inserting HTML templates.
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
 
-// ✅ Centralized delete handler (desktop + mobile)
+// Delegated click handler so newly-rendered rows/cards work without rebinding.
 function setupDeleteUserHandler() {
   document.body.addEventListener("click", (e) => {
     const btn = e.target.closest(".delete-user-btn");
@@ -136,6 +145,7 @@ function setupDeleteUserHandler() {
   });
 }
 
+/** Deletes a selected web/bot user and refreshes list on success. */
 async function deleteUser(userId, username, userType) {
   const userTypeText = userType === "bot" ? "bot user" : "user";
 
@@ -177,9 +187,13 @@ async function deleteUser(userId, username, userType) {
   }
 }
 
-/* -----------------------------
-     Add User form: validation + submit
-  ----------------------------- */
+/**
+ * Add-user form workflow:
+ * - realtime field validation
+ * - password rule hints
+ * - API submission + UI refresh on success
+ */
+/** Wires add-user form validation, password checks, and create API submission. */
 function setupUserCreationForm() {
   const form = document.querySelector("#addUserRow form");
   if (!form) return;
@@ -210,6 +224,7 @@ function setupUserCreationForm() {
     if (feedback) feedback.style.display = "none";
   };
 
+  /** Validates password complexity and returns unmet rule labels. */
   function validatePassword(pw) {
     const errors = [];
     if (pw.length < 10) errors.push("≥10 characters");
@@ -219,6 +234,7 @@ function setupUserCreationForm() {
     return errors;
   }
 
+  /** Updates password rule indicator UI based on current input value. */
   function updatePasswordRequirements(pw) {
     const reqRequired = document.getElementById("req-required");
     const reqLength = document.getElementById("req-length");
@@ -244,12 +260,14 @@ function setupUserCreationForm() {
     }
   }
 
+  /** Sanitizes role input to allowed server values. */
   function normalizeRole(v) {
     const s = (v || "").toLowerCase().trim();
     if (["admin", "staff", "owner"].includes(s)) return s;
     return "staff";
   }
 
+  /** Validates create-user form and returns either message or payload. */
   function validate() {
     clearFeedback();
     const u = (elUsername?.value || "").trim();
@@ -336,3 +354,4 @@ function setupUserCreationForm() {
     }
   });
 }
+

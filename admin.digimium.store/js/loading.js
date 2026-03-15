@@ -29,6 +29,7 @@
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => document.querySelectorAll(selector);
 
+  /** Returns a debounced wrapper that delays execution until input settles. */
   function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -41,6 +42,7 @@
     };
   }
 
+  /** Returns a throttled wrapper that executes at most once per `limit`. */
   function throttle(func, limit) {
     let inThrottle;
     return function () {
@@ -55,6 +57,7 @@
   }
 
   // ====== GLOBAL LOADING OVERLAY ======
+  /** Creates or returns the singleton global loading overlay element. */
   function createGlobalOverlay() {
     if (globalOverlay) return globalOverlay;
 
@@ -70,6 +73,7 @@
     return globalOverlay;
   }
 
+  /** Shows global overlay and increments loading reference counter. */
   function showGlobalLoading(message = CONFIG.defaultMessage) {
     const overlay = createGlobalOverlay();
     const textEl = overlay.querySelector(".loading-text");
@@ -78,6 +82,7 @@
     loadingCount++;
   }
 
+  /** Hides global overlay when reference count reaches zero. */
   function hideGlobalLoading() {
     if (globalOverlay) {
       loadingCount = Math.max(0, loadingCount - 1);
@@ -88,6 +93,7 @@
   }
 
   // ====== BUTTON LOADING ======
+  /** Toggles loading state and preserved content for a button element. */
   function setButtonLoading(button, loading = true, text = null) {
     if (!button) return;
 
@@ -119,6 +125,7 @@
   }
 
   // ====== FORM LOADING ======
+  /** Toggles disabled/loading state for all interactive controls in a form. */
   function setFormLoading(form, loading = true) {
     if (!form) return;
 
@@ -144,6 +151,7 @@
   }
 
   // ====== TABLE LOADING ======
+  /** Temporarily clears/restores table content while loading. */
   function setTableLoading(table, loading = true) {
     if (!table) return;
 
@@ -163,6 +171,7 @@
   }
 
   // ====== PAGE LOADING ======
+  /** Renders a full-page loading blocker. */
   function showPageLoading(message = "Loading page...") {
     const pageLoader = document.createElement("div");
     pageLoader.className = "page-loading";
@@ -176,6 +185,7 @@
     document.body.appendChild(pageLoader);
   }
 
+  /** Removes full-page loading blocker if present. */
   function hidePageLoading() {
     const pageLoader = document.getElementById("pageLoader");
     if (pageLoader) {
@@ -184,6 +194,7 @@
   }
 
   // ====== SKELETON LOADING ======
+  /** Builds one skeleton table row with the requested column count. */
   function createSkeletonRow(columns = 5) {
     const row = document.createElement("tr");
     for (let i = 0; i < columns; i++) {
@@ -194,6 +205,7 @@
     return row;
   }
 
+  /** Replaces table body with skeleton rows and stores original markup. */
   function showSkeletonTable(table, rows = 5, columns = 5) {
     if (!table) return;
 
@@ -208,6 +220,7 @@
     }
   }
 
+  /** Restores original table markup after skeleton mode. */
   function hideSkeletonTable(table) {
     if (!table) return;
 
@@ -218,6 +231,7 @@
   }
 
   // ====== PROGRESS LOADING ======
+  /** Creates and optionally mounts an indeterminate progress bar. */
   function createProgressBar(container, options = {}) {
     const {
       height = "4px",
@@ -258,6 +272,7 @@
   }
 
   // ====== CUSTOM LOADING TYPES ======
+  /** Creates a pulse loader node with configured size. */
   function createPulseLoader(size = "medium") {
     const pulse = document.createElement("div");
     pulse.className = "pulse-loading";
@@ -265,6 +280,7 @@
     return pulse;
   }
 
+  /** Creates a 3-dot animated loader node. */
   function createDotsLoader() {
     const dots = document.createElement("div");
     dots.className = "dots-loading";
@@ -273,6 +289,7 @@
   }
 
   // ====== ASYNC WRAPPER ======
+  /** Executes async work with selected loading states and optional retries. */
   async function withLoading(asyncFn, options = {}) {
     const {
       showGlobal = false,
@@ -327,6 +344,7 @@
   }
 
   // ====== NETWORK STATUS ======
+  /** Reflects browser online/offline changes in global loading overlay. */
   function updateNetworkStatus() {
     isOnline = navigator.onLine;
     if (!isOnline) {
@@ -337,12 +355,14 @@
   }
 
   // ====== ERROR HANDLING ======
+  /** Global error fallback that clears blocking loaders. */
   function handleGlobalError(error) {
     console.error("Global error:", error);
     hideGlobalLoading();
     hidePageLoading();
   }
 
+  /** Unhandled promise rejection fallback that clears blocking loaders. */
   function handleUnhandledRejection(event) {
     console.error("Unhandled promise rejection:", event.reason);
     hideGlobalLoading();

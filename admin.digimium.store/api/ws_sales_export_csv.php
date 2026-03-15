@@ -20,21 +20,18 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     $sql = "SELECT 
-                sale_id,
                 sale_product,
                 duration,
                 quantity,
-                renew,
                 customer,
                 email,
                 purchased_date,
                 expired_date,
                 manager,
                 note,
-                price,
-                profit
+                price
             FROM ws_sale_overview 
-            ORDER BY purchased_date DESC, sale_id DESC";
+            ORDER BY purchased_date DESC, sale_id DESC LIMIT 200";
 
     $stmt = $pdo->query($sql);
     $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -47,37 +44,31 @@ try {
 
     // CSV headers
     fputcsv($output, [
-        'ID',
         'Product',
         'Duration',
         'Quantity',
-        'Renew',
         'Customer',
         'Email',
         'Purchase Date',
         'Expired Date',
         'Manager',
         'Note',
-        'Price (Ks)',
-        'Profit (Ks)'
+        'Price (Ks)'
     ]);
 
     // CSV data rows
     foreach ($sales as $sale) {
         fputcsv($output, [
-            $sale['sale_id'],
             $sale['sale_product'],
             $sale['duration'] ?? '',
             $sale['quantity'],
-            $sale['renew'],
             $sale['customer'],
             $sale['email'] ?? '',
             $sale['purchased_date'],
             $sale['expired_date'] ?? '',
             $sale['manager'] ?? '',
             $sale['note'] ?? '',
-            number_format($sale['price'], 0),
-            number_format($sale['profit'], 0)
+            number_format($sale['price'], 0)
         ]);
     }
 

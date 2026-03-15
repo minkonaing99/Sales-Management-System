@@ -1,10 +1,15 @@
+/**
+ * Module: CSV export trigger for Sales Overview.
+ * Purpose: Downloads retail or wholesale CSV depending on the active tab.
+ */
 document
   .getElementById("downloadCsv")
   ?.addEventListener("click", async function () {
+    /** Disable the trigger to prevent duplicate export requests. */
     const btn = this;
     btn.disabled = true;
     try {
-      // Check which page is currently active
+      // Resolve active tab to choose the matching export endpoint.
       const retailBtn = document.getElementById("retail_page");
       const isRetailActive =
         retailBtn && retailBtn.classList.contains("btn-active");

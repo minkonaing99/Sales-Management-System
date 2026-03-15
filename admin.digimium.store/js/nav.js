@@ -1,7 +1,13 @@
+/**
+ * Module: Shared navigation behavior.
+ * Purpose: Handles active-link highlighting, mobile burger toggle, and logout.
+ */
 (function () {
+  // Small DOM helpers for this file only.
   const $ = (s, c = document) => c.querySelector(s);
   const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 
+  /** Normalizes URL-like href input to a consistent pathname key. */
   function normalize(href) {
     try {
       const url = new URL(href, location.href);
@@ -14,6 +20,7 @@
   }
 
   // -> "sales_overview.html" | "product_catalog.html" | "index"
+  /** Extracts comparable page key from URL/path for nav highlighting. */
   function pageKey(href) {
     const p = normalize(href);
     if (p === "/") return "index";
@@ -21,7 +28,10 @@
     return segs.pop() || "index";
   }
 
+  /** Marks the current page link as active in the navigation menu. */
   function setActiveNav() {
+    // We match by normalized "page key" so links work consistently with
+    // `/foo`, `/foo/`, and `/foo/index.php` style URLs.
     const hereKey = pageKey(location.pathname);
 
     $$("nav .nav-links a[href]").forEach((a) => {
@@ -40,6 +50,7 @@
     });
   }
 
+  /** Binds burger-menu open/close behavior for small screens. */
   function initNavigationToggle() {
     const burger = $("#burger");
     const navLinks = $("#navLinks");
@@ -62,12 +73,14 @@
     initNavigationToggle();
     setActiveNav();
   });
+  // Keep highlighting in sync for browser navigation/history changes.
   document.addEventListener("DOMContentLoaded", setActiveNav);
 
   window.addEventListener("popstate", setActiveNav);
   window.addEventListener("hashchange", setActiveNav);
 })();
 
+// Global logout action shared across all authenticated pages.
 document.getElementById("logoutBtn")?.addEventListener("click", async (e) => {
   e.preventDefault();
 

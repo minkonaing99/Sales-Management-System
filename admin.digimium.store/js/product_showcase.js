@@ -1,6 +1,11 @@
-// Product Showcase Management JavaScript
+/**
+ * Module: Product Showcase visual editor.
+ * Purpose: Loads services JSON, renders draggable cards, and handles create/edit/delete
+ * operations against `api_json/*` endpoints used by the storefront.
+ */
 
 class ProductShowcase {
+  /** Initializes showcase state and triggers first render pipeline. */
   constructor() {
     this.servicesData = [];
     this.currentTab = "visual";
@@ -8,12 +13,14 @@ class ProductShowcase {
     this.init();
   }
 
+  /** Bootstraps service data and UI listeners. */
   async init() {
     await this.loadServices();
     this.setupEventListeners();
     this.renderServices();
   }
 
+  /** Loads showcase JSON data from backend. */
   async loadServices() {
     try {
       const response = await fetch("./api_json/get_services.php");
@@ -35,6 +42,7 @@ class ProductShowcase {
     }
   }
 
+  /** Wires tab/form buttons, validation hooks, and close actions. */
   setupEventListeners() {
     // Tab switching - Product catalog style
     const visualBtn = document.getElementById("visual_editor");
@@ -77,6 +85,7 @@ class ProductShowcase {
     }
   }
 
+  /** Switches between visual and add/edit tabs. */
   showTab(tab) {
     const visualBtn = document.getElementById("visual_editor");
     const addServiceBtn = document.getElementById("addServiceBtn");
@@ -115,6 +124,7 @@ class ProductShowcase {
     }
   }
 
+  /** Resets form/edit state and returns to visual tab. */
   closeForm() {
     // Reset the form
     const serviceFormElement = document.getElementById("serviceForm");
@@ -135,6 +145,7 @@ class ProductShowcase {
     this.showTab("visual");
   }
 
+  /** Renders both popular and other service card groups. */
   renderServices() {
     const popularContainer = document.getElementById("popularServices");
     const otherContainer = document.getElementById("otherServices");
@@ -151,6 +162,7 @@ class ProductShowcase {
     this.setupDragAndDrop();
   }
 
+  /** Returns service card HTML for a specific category. */
   renderServiceCards(category) {
     if (
       !this.servicesData ||
@@ -243,6 +255,7 @@ class ProductShowcase {
       .join("");
   }
 
+  /** Attaches drag and drop events for service reordering. */
   setupDragAndDrop() {
     const dragHandles = document.querySelectorAll(".drag-handle");
     const serviceCards = document.querySelectorAll(".service-card");
@@ -262,6 +275,7 @@ class ProductShowcase {
     });
   }
 
+  /** Stores currently dragged card context. */
   handleDragStart(e) {
     // Find the parent service card
     const serviceCard = e.target.closest(".service-card");
@@ -273,6 +287,7 @@ class ProductShowcase {
     e.dataTransfer.setData("text/html", serviceCard.outerHTML);
   }
 
+  /** Cleans drag state and visual indicators after drag completion. */
   handleDragEnd(e) {
     // Find the parent service card
     const serviceCard = e.target.closest(".service-card");
@@ -287,11 +302,13 @@ class ProductShowcase {
     });
   }
 
+  /** Allows dropping by preventing default drag-over behavior. */
   handleDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   }
 
+  /** Highlights potential drop target card on drag enter. */
   handleDragEnter(e) {
     e.preventDefault();
     if (
@@ -302,12 +319,14 @@ class ProductShowcase {
     }
   }
 
+  /** Removes drop-target highlight when drag leaves a card. */
   handleDragLeave(e) {
     if (e.target.closest(".service-card")) {
       e.target.closest(".service-card").classList.remove("drag-over");
     }
   }
 
+  /** Finalizes same-category reorder and persists new order. */
   handleDrop(e) {
     e.preventDefault();
 
@@ -342,6 +361,7 @@ class ProductShowcase {
     this.saveNewOrder();
   }
 
+  /** Reorders service arrays in memory after drag-drop. */
   reorderService(fromCategory, fromIndex, toCategory, toIndex) {
     if (
       !this.servicesData[0][fromCategory] ||
@@ -360,6 +380,7 @@ class ProductShowcase {
     this.servicesData[0][toCategory].splice(toIndex, 0, movedService);
   }
 
+  /** Persists reordered service JSON to backend. */
   async saveNewOrder() {
     try {
       const response = await fetch("./api_json/save_services.php", {
@@ -383,6 +404,7 @@ class ProductShowcase {
     }
   }
 
+  /** Handles add/update form submit and sends multipart payload. */
   async handleAddService(event) {
     event.preventDefault();
 
@@ -526,6 +548,7 @@ class ProductShowcase {
     }
   }
 
+  /** Resets edit mode flags and form heading/button labels. */
   resetEditState() {
     this.editingService = undefined;
 
@@ -547,6 +570,7 @@ class ProductShowcase {
     }
   }
 
+  /** Deletes one service entry by category/index. */
   async deleteService(category, index) {
     if (!confirm("Are you sure you want to delete this service?")) {
       return;
@@ -576,6 +600,7 @@ class ProductShowcase {
     }
   }
 
+  /** Enters edit mode for a selected service and pre-fills form data. */
   editService(category, index) {
     const service = this.servicesData[0][category][index];
     if (!service) return;
@@ -602,6 +627,7 @@ class ProductShowcase {
     }
   }
 
+  /** Populates the editor form with existing service content. */
   populateEditForm(service) {
     // Basic information
     const nameInput = document.getElementById("services_name");
@@ -700,6 +726,7 @@ class ProductShowcase {
     }
   }
 
+  /** Shows currently stored service photo in the editor. */
   showPhotoPreview(photoUrl) {
     const photoPreview = document.getElementById("photo_preview");
     if (photoPreview) {
@@ -714,6 +741,7 @@ class ProductShowcase {
     }
   }
 
+  /** Appends one dynamic pricing row to the form. */
   addPricingRow() {
     const pricingContainer = document.querySelector(".pricing-table");
     if (!pricingContainer) return;
@@ -742,6 +770,7 @@ class ProductShowcase {
     pricingContainer.appendChild(newRow);
   }
 
+  /** Appends one dynamic feature row to the form. */
   addFeatureRow() {
     const featuresContainer = document.querySelector(".features-table");
     if (!featuresContainer) return;
@@ -760,6 +789,7 @@ class ProductShowcase {
     featuresContainer.appendChild(newRow);
   }
 
+  /** Binds add-row buttons for pricing/features sections. */
   setupDynamicRowButtons() {
     // Add pricing row button
     const addPricingBtn = document.getElementById("addPricingBtn");
@@ -774,6 +804,7 @@ class ProductShowcase {
     }
   }
 
+  /** Safely parses a JSON string field with empty fallback. */
   parseJsonField(value) {
     if (!value) return {};
     try {
@@ -783,12 +814,14 @@ class ProductShowcase {
     }
   }
 
+  /** Escapes plain text before injecting into HTML templates. */
   escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
 
+  /** Normalizes stored photo paths to public image URLs. */
   getImageUrl(photoUrl) {
     // Convert relative path to absolute URL for browser access
     if (photoUrl && photoUrl.startsWith("../../digimium.store/")) {
@@ -814,6 +847,7 @@ class ProductShowcase {
     return photoUrl;
   }
 
+  /** Formats duration keys into human-readable labels. */
   formatDuration(duration) {
     const durationMap = {
       "1_month": "1 Month",
@@ -828,6 +862,7 @@ class ProductShowcase {
     );
   }
 
+  /** Displays a transient alert banner in page main content. */
   showAlert(message, type = "info") {
     // Remove existing alerts
     const existingAlerts = document.querySelectorAll(".alert");
@@ -852,6 +887,7 @@ class ProductShowcase {
     }, 5000);
   }
 
+  /** Validates service form fields and file constraints. */
   validateForm(formData, isEditing = false) {
     // Check required fields
     const photoFile = formData.get("services_photo");
@@ -918,6 +954,7 @@ class ProductShowcase {
     return { isValid: true, message: "Validation passed." };
   }
 
+  /** Converts numeric price text to UI-styled masked format. */
   formatPrice(priceValue) {
     // Remove any non-numeric characters except decimal point
     const numericValue = priceValue.toString().replace(/[^\d.]/g, "");
@@ -942,6 +979,7 @@ class ProductShowcase {
     return `Ks ${result}`;
   }
 
+  /** Converts masked UI price back to raw numeric string. */
   convertFormattedPriceToRaw(formattedPrice) {
     // Remove "Ks " prefix and any commas
     let priceStr = formattedPrice
@@ -958,6 +996,7 @@ class ProductShowcase {
     return isNaN(number) ? "" : number.toString();
   }
 
+  /** Attaches live validation handlers for critical form inputs. */
   setupRealTimeValidation(form) {
     // Photo validation
     const photoInput = form.querySelector("#services_photo");
@@ -1031,6 +1070,7 @@ class ProductShowcase {
     }
   }
 
+  /** Applies error styling to a single form input. */
   showFieldError(input, message) {
     // Remove existing error
     this.clearFieldError(input);
@@ -1039,11 +1079,13 @@ class ProductShowcase {
     input.style.borderColor = "#dc3545";
   }
 
+  /** Clears error styling from a single form input. */
   clearFieldError(input) {
     // Remove error styling (red border)
     input.style.borderColor = "";
   }
 
+  /** Ensures at least one feature row has a non-empty value. */
   validateFeatures(form) {
     let hasFeatures = false;
     for (let i = 1; i <= 5; i++) {

@@ -1,3 +1,7 @@
+/**
+ * Module: Generic section toggle helper (legacy utility).
+ * Purpose: Toggles visibility for user/product forms and restores form defaults on close.
+ */
 document.addEventListener("DOMContentLoaded", function () {
   const userSettingBtn = document.getElementById("userSettingBtn");
   const userSettingSection = document.getElementById("user_setting");
@@ -20,6 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // util: clear only if value is not the default
+  /** Resets section inputs back to captured default values. */
   function clearFormInputs(section) {
     section.querySelectorAll("input, select, textarea").forEach((el) => {
       const defaultVal = defaultValues.get(el);
@@ -35,6 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // util: show exactly one section, hide the rest
+  /** Shows one target section and hides/reset sibling sections. */
   function showOnly(target, others) {
     const isVisible = target.style.display !== "none";
 

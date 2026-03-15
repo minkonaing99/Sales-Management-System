@@ -24,6 +24,10 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
+    $hasStoreCol = (bool)$pdo
+        ->query("SHOW COLUMNS FROM products_catalog LIKE 'store'")
+        ->fetch(PDO::FETCH_ASSOC);
+
     // Read JSON body
     $raw = file_get_contents('php://input');
     $data = json_decode($raw, true);
@@ -60,6 +64,10 @@ try {
     // renew: numbers only (0,1,2,3,4,5,12). Default to 0 if missing/empty.
     $renewRaw = $data['renew'] ?? null;
     $renew    = ($renewRaw === '' || $renewRaw === null) ? 0 : $toInt($renewRaw);
+
+    // store: 0=Void, 1=Digimium, 2=Dmarwal
+    $storeRaw = $data['store'] ?? 0;
+    $store    = in_array((int)$storeRaw, [0, 1, 2], true) ? (int)$storeRaw : 0;
 
     $supplier     = $trimOrNull($data['supplier'] ?? null);
     $wholesaleStr = $toDecimalString($data['wholesale'] ?? null);
@@ -114,14 +122,23 @@ try {
     }
 
     // Insert
-    $sql = "
-        INSERT INTO products_catalog
-            (product_name, duration, renew, supplier, wholesale, retail, note, link)
-        VALUES
-            (:product_name, :duration, :renew, :supplier, :wholesale, :retail, :note, :link)
-    ";
+    if ($hasStoreCol) {
+        $sql = "
+            INSERT INTO products_catalog
+                (product_name, duration, renew, supplier, wholesale, retail, note, link, store)
+            VALUES
+                (:product_name, :duration, :renew, :supplier, :wholesale, :retail, :note, :link, :store)
+        ";
+    } else {
+        $sql = "
+            INSERT INTO products_catalog
+                (product_name, duration, renew, supplier, wholesale, retail, note, link)
+            VALUES
+                (:product_name, :duration, :renew, :supplier, :wholesale, :retail, :note, :link)
+        ";
+    }
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([
+    $params = [
         ':product_name' => $product_name,
         ':duration'     => $duration,
         ':renew'        => $renew, // integer only
@@ -130,7 +147,11 @@ try {
         ':retail'       => $retailStr,
         ':note'         => $note,
         ':link'         => $link
-    ]);
+    ];
+    if ($hasStoreCol) {
+        $params[':store'] = $store;
+    }
+    $stmt->execute($params);
 
     $id = (int)$pdo->lastInsertId();
 

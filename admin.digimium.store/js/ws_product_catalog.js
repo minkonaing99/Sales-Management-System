@@ -1,3 +1,7 @@
+/**
+ * Module: Wholesale product catalog CRUD controller.
+ * Purpose: Manages wholesale-only product rows, form validation, and API sync.
+ */
 (() => {
   "use strict";
 
@@ -53,6 +57,7 @@
     : null;
 
   // ====== Utils ======
+  /** Toggles danger styling on an input and its label. */
   function setDanger(el, on) {
     if (!el) return;
     el.classList.toggle("text-danger", !!on);
@@ -71,21 +76,25 @@
       : NaN;
 
   // renew helpers (numbers only)
+  /** Parses renew months from a control and enforces allowed integer values. */
   function parseRenewInt(el) {
     const n = Number((el?.value ?? "").toString().trim());
     if (!Number.isInteger(n)) return null;
     return ALLOWED_RENEW.has(n) ? n : null;
   }
+  /** Coerces renew value to a safe allowed integer fallback. */
   function coerceRenewInt(v) {
     const n = Number((v ?? "").toString().trim());
     return Number.isInteger(n) && ALLOWED_RENEW.has(n) ? n : 0;
   }
+  /** Sets the renew control value using allowed options only. */
   function setRenewableControlValue(el, intVal) {
     if (!el) return;
     const v = ALLOWED_RENEW.has(intVal) ? intVal : 0;
     el.value = String(v);
   }
   // Put this with your utils
+  /** Removes trailing duration suffixes from display product names. */
   function stripDurationSuffix(name) {
     // remove one or more trailing " - 3M" or "(3m)" suffixes, case-insensitive
     return (name || "")
@@ -93,15 +102,18 @@
       .trim();
   }
 
+  /** Builds canonical product name format: `<name> - <duration>M`. */
   function formatProductName(rawName, duration) {
     const base = (rawName || "").replace(/\s*\(\s*\d+\s*m\s*\)$/i, "").trim();
     return `${base} - ${duration}M`;
   }
+  /** Normalizes URL input and adds protocol if missing. */
   function normalizeLink(s) {
     const v = (s || "").trim();
     if (!v) return null;
     return /^https?:\/\//i.test(v) ? v : `https://${v}`;
   }
+  /** Formats number as rounded Kyat text. */
   function formatKyat(n) {
     const num = Number(n);
     if (!Number.isFinite(num)) return "-";
@@ -117,6 +129,7 @@
     `<span class="era-icon"><img src="./assets/edit.svg" alt=""></span>`;
 
   // ====== Validation (shared) ======
+  /** Shared validator for add/edit catalog forms and API payload shaping. */
   function validateProductForm(refs, { formatName = true } = {}) {
     const errors = {};
 
@@ -181,6 +194,7 @@
     return { valid, payload };
   }
 
+  /** Attaches validation handlers and runs initial validation pass. */
   function attachValidation(refs, validator) {
     ["input", "blur"].forEach((evt) => {
       refs.product?.addEventListener(evt, validator);
@@ -194,6 +208,7 @@
   }
 
   // ====== Table render ======
+  /** Returns a full-width table placeholder row. */
   function placeholderRow(text) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
@@ -204,6 +219,7 @@
     return tr;
   }
 
+  /** Renders wholesale product rows into table body. */
   function renderRows(rows) {
     tbody.innerHTML = "";
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -300,6 +316,7 @@
     tbody.appendChild(frag);
   }
 
+  /** Loads wholesale products from API and renders table content. */
   async function loadProducts() {
     tbody.innerHTML = "";
     tbody.appendChild(placeholderRow("Loading…"));
@@ -317,6 +334,7 @@
       tbody.appendChild(placeholderRow(`Failed to load: ${err.message}`));
     }
   }
+  /** Recomputes row numbering after a client-side delete. */
   function renumberRows() {
     tbody.querySelectorAll("tr.era-row").forEach((tr, idx) => {
       const cell = tr.querySelector(".era-num");

@@ -1,6 +1,10 @@
 <?php
 
 declare(strict_types=1);
+// Login entry page:
+// - boots secure session settings
+// - attempts remember-me auto login
+// - redirects authenticated users to the dashboard
 require __DIR__ . '/api/session_bootstrap.php';
 require __DIR__ . '/api/remember.php';
 
@@ -13,21 +17,20 @@ if (!empty($_SESSION['auth']) || remember_try_login_from_cookie()) {
 <!DOCTYPE html>
 <html lang="en">
 
-<!DOCTYPE html>
-<html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Digimium • Login </title>
+    <title>Digimium | Login</title>
     <link rel="stylesheet" href="./style/style.min.css">
     <link rel="stylesheet" href="./style/login.min.css">
 </head>
 
-<body>
+<body class="auth-page">
     <main class="auth-wrapper">
         <section class="auth-card" role="dialog" aria-labelledby="title">
+            <p class="auth-brand">DIGIMIUM ADMIN</p>
             <h1 id="title" class="auth-title">Sign in to Digimium</h1>
+            <p class="auth-subtitle">Use your account credentials to continue</p>
 
             <form id="loginForm" novalidate>
                 <div class="field">

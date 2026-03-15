@@ -1,9 +1,9 @@
 "use strict";
 
-/* -----------------------------
-   Product Catalog Tab Switching and Form Toggle
-   This file handles the retail/wholesale tab switching and form visibility
------------------------------ */
+/**
+ * Module: Product catalog tab and form visibility toggles.
+ * Purpose: Switches between retail/wholesale views and opens/closes the add form.
+ */
 
 document.addEventListener("DOMContentLoaded", () => {
   // Get the button and form sections
@@ -100,6 +100,7 @@ const wholesaleBtn = document.getElementById("wholesale_page");
 const retailSections = document.querySelectorAll(".retail_page");
 const wholesaleSections = document.querySelectorAll(".wholesale_page");
 
+/** Switches retail/wholesale tab styles and section visibility. */
 function showPage(page) {
   if (page === "retail") {
     retailBtn.classList.add("btn-active");

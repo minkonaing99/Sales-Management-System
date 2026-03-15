@@ -1,33 +1,29 @@
 <?php
-$json_file_path = '../../digimium.store/data/services.json';
 
-if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
+declare(strict_types=1);
 
-    if (!$input) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid JSON data']);
-        exit;
-    }
+require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/api/session_bootstrap.php';
+require_once dirname(__DIR__) . '/api/auth.php';
 
-    // Validate JSON structure
-    if (!is_array($input)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid data structure']);
-        exit;
-    }
+use Digimium\Core\Http;
+use Digimium\Core\ServiceCatalogStore;
 
-    // Save new data
-    if (file_put_contents($json_file_path, json_encode($input, JSON_PRETTY_PRINT))) {
-        echo json_encode([
-            'success' => true,
-            'message' => 'Services data updated successfully!'
-        ]);
-    } else {
-        http_response_code(500);
-        echo json_encode(['error' => 'Failed to save changes. Please check file permissions.']);
-    }
-} else {
-    http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed']);
+auth_require_login(['admin', 'owner']);
+Http::requireMethod(['POST']);
+
+$input = Http::jsonBody();
+if (!is_array($input) || $input === []) {
+    Http::json(['error' => 'Invalid JSON data'], 400);
+    exit;
+}
+
+try {
+    ServiceCatalogStore::write($input);
+    Http::json([
+        'success' => true,
+        'message' => 'Services data updated successfully!',
+    ]);
+} catch (Throwable $e) {
+    Http::json(['error' => 'Failed to save changes.'], 500);
 }

@@ -35,7 +35,7 @@
     }
 
     .subs-card:hover {
-        background: rgba(48, 109, 136, 0.5)
+        background: rgba(46, 61, 83, 0.7)
     }
 
     .subs-row {
@@ -71,6 +71,15 @@
     .subs-name {
         text-align: left;
         font-size: .8rem
+    }
+
+    .subs-customer-value {
+        display: inline-block;
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom
     }
 
     .subs-email {

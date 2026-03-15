@@ -1,6 +1,10 @@
 <?php
 
 declare(strict_types=1);
+// Product Showcase CMS page (admin/owner):
+// - "Visual Editor" list is loaded from JSON in the storefront project
+// - "Add Service" form submits to `api_json/*` endpoints
+// - UI behavior is centralized in `js/product_showcase.js`
 require __DIR__ . '/api/session_bootstrap.php';
 require __DIR__ . '/api/auth.php';
 

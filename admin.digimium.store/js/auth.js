@@ -1,6 +1,12 @@
 "use strict";
 
+/**
+ * Module: Login page controller.
+ * Purpose: Validates login input, submits credentials to PHP auth endpoint,
+ * and handles login UI states + redirect flow.
+ */
 (() => {
+  // Contract: backend responds with plain text "success" on valid credentials.
   const LOGIN_URL = "api/login.php";
   const REDIRECT_TO = "/sales_overview.php";
 
@@ -29,6 +35,7 @@
       });
     }
 
+    /** Shows inline login feedback and applies success/error styling. */
     function showMsg(text, ok = false) {
       if (!msgEl) return;
       msgEl.textContent = text;
@@ -36,6 +43,7 @@
       msgEl.style.color = ok ? "#7CF39E" : "#ff5a5a";
     }
 
+    /** Reads and trims login form values. */
     function getVals() {
       return {
         username: (usernameEl?.value || "").trim(),
@@ -43,7 +51,9 @@
       };
     }
 
+    /** Performs minimal client-side validation before submit. */
     function validate() {
+      // Keep this validation minimal; authoritative checks happen server-side.
       const { username, password } = getVals();
       if (!username) {
         showMsg("Username is required.");
@@ -86,7 +96,7 @@
 
         const text = (await res.text()).trim();
 
-        // PHP echoes "success" on good login; otherwise an error string
+        // Backend convention: plain text response rather than JSON.
         if (!res.ok) {
           throw new Error(text || `Login failed (HTTP ${res.status})`);
         }

@@ -1,3 +1,8 @@
+/**
+ * Module: Retail + wholesale product catalog CRUD controller.
+ * Purpose: Fetches product rows, validates add/edit forms, performs CRUD calls,
+ * and keeps table/mobile render state in sync.
+ */
 (() => {
   "use strict";
 
@@ -25,6 +30,7 @@
   const wholesaleTbody = $("ws_product_table");
 
   // Get current active table based on which page is visible
+  /** Resolves the currently visible catalog table and API endpoints by active tab. */
   function getCurrentTable() {
     const retailSection = document.querySelector(".retail_page");
     const wholesaleSection = document.querySelector(".wholesale_page");
@@ -47,6 +53,7 @@
         duration: $("duration"),
         supplier: $("supplier"),
         renewable: $("renewable"), // MUST have values: 0,1,2,3,4,5,6,12
+        store: $("store"),
         note: $("note"),
         link: $("link"),
         wholesale: $("wholesale_amount"),
@@ -76,6 +83,7 @@
     : null;
 
   // ====== Utils ======
+  /** Toggles danger styling on an input and its label. */
   function setDanger(el, on) {
     if (!el) return;
     el.classList.toggle("text-danger", !!on);
@@ -90,25 +98,29 @@
     v === "" || v == null
       ? NaN
       : Number.isFinite(+v)
-      ? Math.round(+v * 100) / 100
-      : NaN;
+        ? Math.round(+v * 100) / 100
+        : NaN;
 
   // renew helpers (numbers only)
+  /** Parses renew months from a control and enforces allowed integer values. */
   function parseRenewInt(el) {
     const n = Number((el?.value ?? "").toString().trim());
     if (!Number.isInteger(n)) return null;
     return ALLOWED_RENEW.has(n) ? n : null;
   }
+  /** Coerces renew value to a safe allowed integer fallback. */
   function coerceRenewInt(v) {
     const n = Number((v ?? "").toString().trim());
     return Number.isInteger(n) && ALLOWED_RENEW.has(n) ? n : 0;
   }
+  /** Sets the renew control value using allowed options only. */
   function setRenewableControlValue(el, intVal) {
     if (!el) return;
     const v = ALLOWED_RENEW.has(intVal) ? intVal : 0;
     el.value = String(v);
   }
   // Put this with your utils
+  /** Removes trailing duration suffixes from display product names. */
   function stripDurationSuffix(name) {
     // remove one or more trailing " - 3M" or "(3m)" suffixes, case-insensitive
     return (name || "")
@@ -116,21 +128,24 @@
       .trim();
   }
 
+  /** Builds canonical product name format: `<name> - <duration>M`. */
   function formatProductName(rawName, duration) {
     const base = (rawName || "").replace(/\s*\(\s*\d+\s*m\s*\)$/i, "").trim();
     return `${base} - ${duration}M`;
   }
+  /** Normalizes URL input and adds protocol if missing. */
   function normalizeLink(s) {
     const v = (s || "").trim();
     if (!v) return null;
     return /^https?:\/\//i.test(v) ? v : `https://${v}`;
   }
+  /** Formats number as rounded Kyat text. */
   function formatKyat(n) {
     const num = Number(n);
     if (!Number.isFinite(num)) return "-";
     return (
       new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(
-        Math.round(num)
+        Math.round(num),
       ) + " Ks"
     );
   }
@@ -140,6 +155,7 @@
     `<span class="era-icon"><img src="./assets/edit.svg" alt=""></span>`;
 
   // ====== Validation (shared) ======
+  /** Shared validator for add/edit catalog forms and API payload shaping. */
   function validateProductForm(refs, { formatName = true } = {}) {
     const errors = {};
 
@@ -188,22 +204,22 @@
       ? formatProductName(productRaw, duration)
       : productRaw;
 
-    const payload = valid
-      ? {
-          product_name,
-          duration,
-          renew: renewableInt, // <- send exact integer (no defaulting to 0)
-          supplier: (refs.supplier?.value || "").trim() || null,
-          wholesale,
-          retail,
-          note: (refs.note?.value || "").trim() || null,
-          link: normalizeLink(refs.link?.value),
-        }
-      : null;
+    const payload = {
+      product_name,
+      duration,
+      renew: renewableInt ?? 0,
+      store: parseInt(refs.store?.value, 10) || 0,
+      supplier: (refs.supplier?.value || "").trim() || null,
+      wholesale,
+      retail,
+      note: (refs.note?.value || "").trim() || null,
+      link: normalizeLink(refs.link?.value),
+    };
 
     return { valid, payload };
   }
 
+  /** Attaches validation handlers and runs initial validation pass. */
   function attachValidation(refs, validator) {
     ["input", "blur"].forEach((evt) => {
       refs.product?.addEventListener(evt, validator);
@@ -217,6 +233,7 @@
   }
 
   // ====== Table render ======
+  /** Returns a full-width table placeholder row. */
   function placeholderRow(text) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
@@ -227,6 +244,7 @@
     return tr;
   }
 
+  /** Renders product rows into the provided table body. */
   function renderRows(rows, tbody) {
     tbody.innerHTML = "";
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -315,7 +333,7 @@
         tdLink,
         tdWholesale,
         tdRetail,
-        tdActions
+        tdActions,
       );
       frag.appendChild(tr);
     });
@@ -323,6 +341,7 @@
     tbody.appendChild(frag);
   }
 
+  /** Loads products for the active tab and renders the corresponding table. */
   async function loadProducts() {
     const { tbody, api } = getCurrentTable();
 
@@ -343,6 +362,7 @@
     }
   }
 
+  /** Recomputes row numbering after a client-side delete. */
   function renumberRows(tbody) {
     tbody.querySelectorAll("tr.era-row").forEach((tr, idx) => {
       const cell = tr.querySelector(".era-num");
@@ -351,13 +371,14 @@
   }
 
   // ====== Delete (delegated) ======
+  /** Binds delegated delete handlers for both retail and wholesale tables. */
   function setupDeleteHandlers() {
     [retailTbody, wholesaleTbody].forEach((tbody) => {
       if (!tbody) return;
 
       tbody.addEventListener("click", async (e) => {
         const btn = e.target.closest(
-          'button.era-icon-btn[data-action="delete"]'
+          'button.era-icon-btn[data-action="delete"]',
         );
         if (!btn) return;
         const tr = btn.closest("tr.era-row");
@@ -422,6 +443,7 @@
         }
         addEls.saveBtn.disabled = true;
         addEls.saveBtn.classList.add("disableBtn");
+        console.log("FINAL PAYLOAD", payload);
 
         const resp = await fetch(api.insert, {
           method: "POST",
@@ -561,6 +583,7 @@
   }
 
   // ====== Tab switching and form toggle ======
+  /** Reloads product rows whenever retail/wholesale tab changes. */
   function setupTabSwitching() {
     const retailBtn = document.getElementById("retail_page");
     const wholesaleBtn = document.getElementById("wholesale_page");

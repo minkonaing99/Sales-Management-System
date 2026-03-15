@@ -42,18 +42,20 @@ $sql = "
     SELECT
         sale_product,
         duration,
-        renew,      
         customer,
         email,
         purchased_date,
         expired_date,
         manager,
         note,
-        price,
-        profit
+        price
     FROM sale_overview
-    ORDER BY purchased_date DESC, sale_id DESC
+    WHERE expired_date BETWEEN CURDATE() - INTERVAL 7 DAY
+                          AND CURDATE() + INTERVAL 3 DAY
+    ORDER BY expired_date DESC
+    LIMIT 50
 ";
+
 try {
     $stmt = $pdo->query($sql);
 } catch (Throwable $e) {
@@ -78,7 +80,6 @@ if ($out === false) {
 $headers = [
     'sale_product',
     'duration',
-    'renew',          // keep raw integer
     'customer',
     'email',
     'purchased_date',
@@ -86,7 +87,6 @@ $headers = [
     'manager',
     'note',
     'price',
-    'profit',
 ];
 fputcsv($out, $headers);
 
@@ -95,7 +95,6 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     // Normalize types
     $sale_product   = $row['sale_product'] ?? '';
     $duration       = isset($row['duration']) ? (int)$row['duration'] : '';
-    $renew          = isset($row['renew']) ? (int)$row['renew'] : 0; // <-- INT, not Yes/No
     $customer       = $row['customer'] ?? '';
     $email          = $row['email'] ?? '';
     $purchased_date = $row['purchased_date'] ?? '';
@@ -103,12 +102,10 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $manager        = $row['manager'] ?? '';
     $note           = $row['note'] ?? '';
     $price          = isset($row['price'])  ? number_format((float)$row['price'],  2, '.', '') : '0.00';
-    $profit         = isset($row['profit']) ? number_format((float)$row['profit'], 2, '.', '') : '0.00';
 
     fputcsv($out, [
         $sale_product,
         $duration === '' ? '' : $duration,
-        $renew,
         $customer,
         $email,
         $purchased_date,
@@ -116,7 +113,6 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $manager,
         $note,
         $price,
-        $profit,
     ]);
 }
 

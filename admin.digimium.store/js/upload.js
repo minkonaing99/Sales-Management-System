@@ -1,5 +1,10 @@
-// Upload Modal Functionality
+/**
+ * Module: CSV/text bulk upload modal.
+ * Purpose: Provides upload UI, parsing/validation helpers, and submission flow
+ * for batch sales insertion.
+ */
 class UploadModal {
+  /** Initializes modal state and builds DOM shell. */
   constructor() {
     this.modal = null;
     this.textarea = null;
@@ -7,11 +12,13 @@ class UploadModal {
     this.init();
   }
 
+  /** Bootstraps modal markup and listeners. */
   init() {
     this.createModal();
     this.bindEvents();
   }
 
+  /** Injects upload modal HTML into the page and caches element references. */
   createModal() {
     // Create modal HTML
     const modalHTML = `
@@ -44,6 +51,7 @@ class UploadModal {
     this.textarea = document.getElementById("uploadTextarea");
   }
 
+  /** Registers close/submit/keyboard/backdrop event handlers for modal UX. */
   bindEvents() {
     // Close button
     document
@@ -88,6 +96,7 @@ class UploadModal {
       });
   }
 
+  /** Opens upload modal and focuses textarea. */
   open() {
     if (this.modal) {
       this.modal.classList.add("active");
@@ -100,6 +109,7 @@ class UploadModal {
     }
   }
 
+  /** Closes modal and clears staged text input. */
   close() {
     if (this.modal) {
       this.modal.classList.remove("active");
@@ -112,6 +122,7 @@ class UploadModal {
     }
   }
 
+  /** Parses textarea data, validates rows, and opens preview on success. */
   async handleSubmit() {
     const text = this.textarea?.value?.trim();
 
@@ -162,6 +173,7 @@ class UploadModal {
     }
   }
 
+  /** Parses CSV rows, validates fields, enriches product data, and builds payload rows. */
   async processUploadData(text) {
     // Parse CSV-like data
     const lines = text.split("\n").filter((line) => line.trim());
@@ -311,6 +323,7 @@ class UploadModal {
     };
   }
 
+  /** Matches pasted product text to catalog rows using exact/fallback strategies. */
   findMatchingProduct(saleProductName, productCatalog) {
     // First try exact match
     let matchedProduct = productCatalog.find(
@@ -345,6 +358,7 @@ class UploadModal {
     return matchedProduct;
   }
 
+  /** Calculates expired date using purchase date + duration months. */
   calculateExpiredDate(purchasedDate, duration) {
     try {
       const date = new Date(purchasedDate);
@@ -367,6 +381,7 @@ class UploadModal {
     }
   }
 
+  /** Normalizes multiple date formats into `YYYY-MM-DD`. */
   normalizeDate(dateString) {
     if (!dateString) return null;
 
@@ -410,6 +425,7 @@ class UploadModal {
     return `${year}-${month}-${day}`;
   }
 
+  /** Splits a CSV line while preserving comma content inside quotes. */
   parseCSVLine(line) {
     const result = [];
     let current = "";
@@ -432,16 +448,19 @@ class UploadModal {
     return result;
   }
 
+  /** Displays success feedback. */
   showSuccess(message) {
     // You can implement a toast notification here
     alert(message);
   }
 
+  /** Displays error feedback. */
   showError(message) {
     // You can implement a toast notification here
     alert("Error: " + message);
   }
 
+  /** Renders preview modal and confirms final bulk insert submission. */
   showPreview(salesData) {
     // Create preview modal HTML
     const previewHTML = `
@@ -631,6 +650,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const retailBtn = document.getElementById("retail_page");
   const wholesaleBtn = document.getElementById("wholesale_page");
 
+  /** Shows upload action only when retail tab is active. */
   function updateUploadButtonVisibility() {
     if (uploadBtn) {
       const isWholesaleActive =

@@ -24,6 +24,10 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
+    $hasStoreCol = (bool)$pdo
+        ->query("SHOW COLUMNS FROM products_catalog LIKE 'store'")
+        ->fetch(PDO::FETCH_ASSOC);
+
     $raw  = file_get_contents('php://input');
     $data = json_decode($raw, true);
     if (!is_array($data)) {
@@ -104,6 +108,17 @@ try {
         } else {
             $fields[] = 'renew = :renew';
             $params[':renew'] = $renew;
+        }
+    }
+
+    // store
+    if ($hasStoreCol && array_key_exists('store', $data)) {
+        $store = (int)$data['store'];
+        if (!in_array($store, [0, 1, 2], true)) {
+            $errors['store'] = 'Store must be 0 (Void), 1 (Digimium), or 2 (Dmarwal).';
+        } else {
+            $fields[] = 'store = :store';
+            $params[':store'] = $store;
         }
     }
 
@@ -202,7 +217,8 @@ try {
     }
 
     // Return updated row
-    $out = $pdo->prepare('SELECT product_id, product_name, duration, renew, supplier, wholesale, retail, note, link FROM products_catalog WHERE product_id = :id');
+    $storeSelect = $hasStoreCol ? 'store' : '0 AS store';
+    $out = $pdo->prepare("SELECT product_id, product_name, duration, renew, supplier, wholesale, retail, note, link, {$storeSelect} FROM products_catalog WHERE product_id = :id");
     $out->execute([':id' => $id]);
     $row = $out->fetch();
 

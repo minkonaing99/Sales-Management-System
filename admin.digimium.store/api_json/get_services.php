@@ -1,16 +1,16 @@
 <?php
-$json_file_path = '../../digimium.store/data/services.json';
 
-if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (file_exists($json_file_path)) {
-        $json_content = file_get_contents($json_file_path);
-        $services_data = json_decode($json_content, true) ?: [];
-        echo json_encode($services_data, JSON_PRETTY_PRINT);
-    } else {
-        http_response_code(404);
-        echo json_encode(['error' => 'Services file not found']);
-    }
-} else {
-    http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed']);
-}
+declare(strict_types=1);
+
+require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/api/session_bootstrap.php';
+require_once dirname(__DIR__) . '/api/auth.php';
+
+use Digimium\Core\Http;
+use Digimium\Core\ServiceCatalogStore;
+
+auth_require_login(['admin', 'owner']);
+Http::requireMethod(['GET']);
+
+$services = ServiceCatalogStore::read();
+Http::json($services);

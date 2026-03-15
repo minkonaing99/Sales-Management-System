@@ -1,136 +1,125 @@
 "use strict";
 
-/* -----------------------------
-   Add Sales Button Toggle for Retail and Wholesale
-   This file handles the single "Add Sales" button that shows
-   the appropriate form based on which tab is active
------------------------------ */
-
+/**
+ * Module: Sales form/tabs visibility controller.
+ * Purpose: Coordinates retail/wholesale page tabs and which add-sale form is visible.
+ * Used on: `sales_overview.php`.
+ */
 document.addEventListener("DOMContentLoaded", () => {
-  // Get the button and form sections
   const addSaleBtn = document.getElementById("addSaleBtn");
-  const addSalesSection = document.getElementById("add_sales");
-  const addWsSalesSection = document.getElementById("add_ws_sales");
+  const formMount = document.getElementById("salesFormMount");
+  const retailTpl = document.getElementById("tpl_add_sales_retail");
+  const wholesaleTpl = document.getElementById("tpl_add_sales_wholesale");
 
-  // Get the tab buttons to check which is active
   const retailBtn = document.getElementById("retail_page");
   const wholesaleBtn = document.getElementById("wholesale_page");
 
-  // Initialize form visibility - ensure they start hidden
-  if (addSalesSection) addSalesSection.style.display = "none";
-  if (addWsSalesSection) addWsSalesSection.style.display = "none";
+  let formsRendered = false;
+
+  const getAddSalesSection = () => document.getElementById("add_sales");
+  const getAddWsSalesSection = () => document.getElementById("add_ws_sales");
+  const getRetailSections = () => document.querySelectorAll(".retail_page");
+  const getWholesaleSections = () => document.querySelectorAll(".wholesale_page");
+
+  /** Injects retail + wholesale forms on first demand and initializes handlers. */
+  const ensureFormsRendered = () => {
+    if (formsRendered) return;
+    if (!formMount || !retailTpl || !wholesaleTpl) return;
+
+    formMount.appendChild(retailTpl.content.cloneNode(true));
+    formMount.appendChild(wholesaleTpl.content.cloneNode(true));
+    formsRendered = true;
+
+    if (typeof window.initRetailAddForm === "function") {
+      window.initRetailAddForm();
+    }
+    if (typeof window.initWholesaleAddForm === "function") {
+      window.initWholesaleAddForm();
+    }
+    hideForms();
+  };
+
+  /** Hides both retail and wholesale add-sale forms. */
+  const hideForms = () => {
+    const addSalesSection = getAddSalesSection();
+    const addWsSalesSection = getAddWsSalesSection();
+    if (addSalesSection) addSalesSection.style.display = "none";
+    if (addWsSalesSection) addWsSalesSection.style.display = "none";
+  };
+
+  /** Toggles visibility for one form section. */
+  const toggleSection = (section) => {
+    if (!section) return;
+    const currentDisplay = section.style.display;
+    section.style.display =
+      currentDisplay === "none" || currentDisplay === "" ? "block" : "none";
+  };
+
+  /** Switches retail/wholesale tab state and visible sections. */
+  const showPage = (page) => {
+    if (!retailBtn || !wholesaleBtn) return;
+
+    if (page === "retail") {
+      retailBtn.classList.add("btn-active");
+      retailBtn.classList.remove("btn-inactive");
+      wholesaleBtn.classList.add("btn-inactive");
+      wholesaleBtn.classList.remove("btn-active");
+
+      getRetailSections().forEach((el) => (el.style.display = "block"));
+      getWholesaleSections().forEach((el) => (el.style.display = "none"));
+    } else {
+      wholesaleBtn.classList.add("btn-active");
+      wholesaleBtn.classList.remove("btn-inactive");
+      retailBtn.classList.add("btn-inactive");
+      retailBtn.classList.remove("btn-active");
+
+      getWholesaleSections().forEach((el) => (el.style.display = "block"));
+      getRetailSections().forEach((el) => (el.style.display = "none"));
+    }
+
+    hideForms();
+  };
+
+  // Default state: hide forms and start on retail view.
+  hideForms();
 
   if (addSaleBtn) {
     addSaleBtn.addEventListener("click", () => {
-      // Check which page is currently active
-      const isRetailActive =
-        retailBtn && retailBtn.classList.contains("btn-active");
+      ensureFormsRendered();
+
+      const addSalesSection = getAddSalesSection();
+      const addWsSalesSection = getAddWsSalesSection();
+      const isRetailActive = retailBtn?.classList.contains("btn-active");
 
       if (isRetailActive) {
-        // Toggle retail form
-        if (addSalesSection) {
-          const currentDisplay = addSalesSection.style.display;
-          if (currentDisplay === "none" || currentDisplay === "") {
-            addSalesSection.style.display = "block";
-          } else {
-            addSalesSection.style.display = "none";
-          }
-        }
-        // Hide wholesale form
-        if (addWsSalesSection) {
-          addWsSalesSection.style.display = "none";
-        }
+        toggleSection(addSalesSection);
+        if (addWsSalesSection) addWsSalesSection.style.display = "none";
       } else {
-        // Toggle wholesale form
-        if (addWsSalesSection) {
-          const currentDisplay = addWsSalesSection.style.display;
-          if (currentDisplay === "none" || currentDisplay === "") {
-            addWsSalesSection.style.display = "block";
-          } else {
-            addWsSalesSection.style.display = "none";
-          }
-        }
-        // Hide retail form
-        if (addSalesSection) {
-          addSalesSection.style.display = "none";
-        }
+        toggleSection(addWsSalesSection);
+        if (addSalesSection) addSalesSection.style.display = "none";
       }
     });
   }
 
-  // Also handle form hiding when switching tabs
-  // This ensures forms are hidden when switching between retail/wholesale
   if (retailBtn) {
-    retailBtn.addEventListener("click", () => {
-      // Hide any open forms when switching to retail
-      if (addSalesSection) addSalesSection.style.display = "none";
-      if (addWsSalesSection) addWsSalesSection.style.display = "none";
-    });
+    retailBtn.addEventListener("click", () => showPage("retail"));
   }
 
   if (wholesaleBtn) {
-    wholesaleBtn.addEventListener("click", () => {
-      // Hide any open forms when switching to wholesale
-      if (addSalesSection) addSalesSection.style.display = "none";
-      if (addWsSalesSection) addWsSalesSection.style.display = "none";
-    });
+    wholesaleBtn.addEventListener("click", () => showPage("wholesale"));
   }
 
-  // Functions to hide forms after successful submission
-  // These can be called from other JavaScript files
   window.hideRetailForm = () => {
+    const addSalesSection = getAddSalesSection();
     if (addSalesSection) addSalesSection.style.display = "none";
   };
 
   window.hideWholesaleForm = () => {
+    const addWsSalesSection = getAddWsSalesSection();
     if (addWsSalesSection) addWsSalesSection.style.display = "none";
   };
-});
 
-const retailBtn = document.getElementById("retail_page");
-const wholesaleBtn = document.getElementById("wholesale_page");
-
-// all content sections with these classes
-const retailSections = document.querySelectorAll(".retail_page");
-const wholesaleSections = document.querySelectorAll(".wholesale_page");
-
-function showPage(page) {
-  if (page === "retail") {
-    retailBtn.classList.add("btn-active");
-    retailBtn.classList.remove("btn-inactive");
-    wholesaleBtn.classList.add("btn-inactive");
-    wholesaleBtn.classList.remove("btn-active");
-
-    // show retail, hide wholesale
-    retailSections.forEach((el) => (el.style.display = "block"));
-    wholesaleSections.forEach((el) => (el.style.display = "none"));
-
-    // Hide any open forms when switching pages
-    const addSalesSection = document.getElementById("add_sales");
-    const addWsSalesSection = document.getElementById("add_ws_sales");
-    if (addSalesSection) addSalesSection.style.display = "none";
-    if (addWsSalesSection) addWsSalesSection.style.display = "none";
-  } else {
-    wholesaleBtn.classList.add("btn-active");
-    wholesaleBtn.classList.remove("btn-inactive");
-    retailBtn.classList.add("btn-inactive");
-    retailBtn.classList.remove("btn-active");
-
-    // show wholesale, hide retail
-    wholesaleSections.forEach((el) => (el.style.display = "block"));
-    retailSections.forEach((el) => (el.style.display = "none"));
-
-    // Hide any open forms when switching pages
-    const addSalesSection = document.getElementById("add_sales");
-    const addWsSalesSection = document.getElementById("add_ws_sales");
-    if (addSalesSection) addSalesSection.style.display = "none";
-    if (addWsSalesSection) addWsSalesSection.style.display = "none";
+  if (retailBtn && wholesaleBtn) {
+    showPage("retail");
   }
-}
-
-// attach events
-retailBtn.addEventListener("click", () => showPage("retail"));
-wholesaleBtn.addEventListener("click", () => showPage("wholesale"));
-
-// default load: show retail
-showPage("retail");
+});

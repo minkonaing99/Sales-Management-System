@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+// Owner-only user management screen.
+// Data operations (list/create/delete) are handled in `js/user_list.js`
+// via API endpoints under `api/user_*.php`.
 require __DIR__ . '/api/session_bootstrap.php';
 require __DIR__ . '/api/auth.php';
 

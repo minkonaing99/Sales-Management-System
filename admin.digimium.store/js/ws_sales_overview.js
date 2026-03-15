@@ -1,8 +1,14 @@
 "use strict";
 
+/**
+ * Module: Wholesale sales table/cards controller.
+ * Purpose: Loads wholesale sales data, supports search/infinite render/inline edit/delete,
+ * and keeps desktop + mobile views synchronized.
+ */
 /* -----------------------------
    Small utilities (global)
 ----------------------------- */
+/** Returns today's local date as `YYYY-MM-DD`. */
 function todayDate() {
   const d = new Date();
   const y = d.getFullYear();
@@ -76,6 +82,7 @@ document
   const API_LIST_URL = "api/ws_sales_table.php";
   const API_DELETE_URL = "api/ws_sale_delete.php";
   const API_INLINE_URL = "api/ws_sale_update_inline.php";
+  const API_FETCH_LIMIT = 500;
 
   // Desktop (table)
   const tbody = document.getElementById("ws_sales_table");
@@ -87,7 +94,7 @@ document
   const MQ_MOBILE = window.matchMedia("(max-width: 640px)");
 
   const COLSPAN = 10;
-  const CACHE_KEY = "cachedWsSales:v1";
+  const CACHE_KEY = "cachedWsSales:v2";
   const PAGE_SIZE = 100;
 
   // --- data cache ---
@@ -113,10 +120,28 @@ document
   // --- search state ---
   let currentQuery = ""; // the text currently filtering
 
+  function readCachePacket() {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return { data: null, etag: null };
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return { data: parsed, etag: null };
+      if (parsed && Array.isArray(parsed.data)) {
+        return { data: parsed.data, etag: parsed.etag || null };
+      }
+    } catch {}
+    return { data: null, etag: null };
+  }
+
+  function writeCachePacket(data, etag = null) {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, etag, ts: Date.now() }));
+  }
+
   // ---------------- helpers ----------------
   const svgTrash = () =>
     `<span class="era-icon"><img src="./assets/delete.svg" alt=""></span>`;
 
+  /** Formats a numeric amount as rounded Kyat display text. */
   function formatKyat(n) {
     const num = Number(n);
     if (!Number.isFinite(num)) return "-";
@@ -127,6 +152,7 @@ document
     );
   }
 
+  /** Formats a `YYYY-MM-DD` string to `DD Mon YYYY` (UTC-safe). */
   function formatDate(d) {
     if (!d) return "-";
     const parts = String(d).split("-");
@@ -152,6 +178,7 @@ document
         }[m])
     );
 
+  /** Builds a full-width placeholder row for loading/empty/error states. */
   function placeholderRow(text) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
@@ -163,6 +190,7 @@ document
   }
 
   // simple trailing debounce (used for search)
+  /** Trailing debounce helper for input-driven rendering. */
   function debounce(fn, ms = 1000) {
     let t;
     return (...args) => {
@@ -171,6 +199,7 @@ document
     };
   }
 
+  /** Precomputes normalized search tokens for a sales row. */
   function buildSearchKey(r) {
     const tokenizeDate = (ymd) => {
       if (!ymd) return [];
@@ -230,6 +259,7 @@ document
   }
 
   // Update local/cache row
+  /** Updates one row in memory and in session cache after inline edits. */
   function updateLocalRow(id, patch) {
     const idStr = String(id);
     const touchesSearch =
@@ -252,21 +282,22 @@ document
     });
 
     // update session cache
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
+    const packet = readCachePacket();
+    if (packet.data) {
       try {
-        const data = JSON.parse(cached);
+        const data = packet.data;
         const idx = data.findIndex((r) => String(r.sale_id) === idStr);
         if (idx >= 0) {
           data[idx] = { ...data[idx], ...patch };
           if (touchesSearch) buildSearchKey(data[idx]);
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+          writeCachePacket(data, packet.etag);
         }
       } catch {}
     }
   }
 
   // ---------------- TABLE ROW BUILDERS (desktop) ----------------
+  /** Builds one desktop table row element for a wholesale sale record. */
   function buildSaleTr(s, displayNum) {
     const tr = document.createElement("tr");
     tr.className = "era-row";
@@ -289,11 +320,11 @@ document
       span.className = "inline-text";
       span.textContent = text ?? "-";
       td.appendChild(span);
-      if (field === "note") td.title = text ?? "";
+      if (field === "note" || field === "customer") td.title = text ?? "";
       return td;
     };
 
-    const tdCustomer = makeEditable("customer", s.customer, "era-muted");
+    const tdCustomer = makeEditable("customer", s.customer, "era-muted-customer");
     const tdEmail = makeEditable("email", s.email, "era-muted");
 
     const tdPurchased = document.createElement("td");
@@ -346,6 +377,7 @@ document
   const TOTAL_COLS = 10;
   const PRICE_COL_INDEX = TOTAL_COLS - 2; // 8
 
+  /** Builds a subtotal row shown after the last row of each purchase date. */
   function buildSubtotalTr(dateKey) {
     const tr = document.createElement("tr");
     tr.className = "era-row era-subtotal";
@@ -381,6 +413,7 @@ document
     return tr;
   }
 
+  /** Computes per-day totals and counts used by subtotal rendering. */
   function buildDailyStats(rows) {
     totalsByDate = new Map();
     countsByDate = new Map();
@@ -394,6 +427,7 @@ document
   }
 
   // ---------------- INLINE EDITING (table only) ----------------
+  /** Converts an editable cell into input mode. */
   function startInlineEdit(td) {
     if (!td || td.classList.contains("editing")) return;
 
@@ -423,6 +457,7 @@ document
     input.select();
   }
 
+  /** Cancels inline editing and restores previous text. */
   function cancelInline(td) {
     if (!td || !td.classList.contains("editing")) return;
     const input = td.querySelector(".inline-input");
@@ -434,7 +469,7 @@ document
       span.style.display = "";
     }
 
-    if (td.dataset.field === "note") {
+    if (td.dataset.field === "note" || td.dataset.field === "customer") {
       td.title = activeEditor?.prev || "";
     }
 
@@ -442,6 +477,7 @@ document
     if (activeEditor?.td === td) activeEditor = null;
   }
 
+  /** Saves inline cell updates with optimistic UI and rollback on failure. */
   async function saveInline(td) {
     const input = td.querySelector(".inline-input");
     const span = td.querySelector(".inline-text");
@@ -476,7 +512,7 @@ document
     // optimistic UI
     span.textContent = next || "-";
     span.style.display = "";
-    if (field === "note") td.title = next || "";
+    if (field === "note" || field === "customer") td.title = next || "";
     td.removeChild(input);
     td.classList.remove("editing");
     if (activeEditor?.td === td) activeEditor = null;
@@ -513,7 +549,7 @@ document
     } catch (err) {
       // rollback on error
       span.textContent = prev || "-";
-      if (field === "note") td.title = prev || "";
+      if (field === "note" || field === "customer") td.title = prev || "";
       updateLocalRow(id, { [field]: prev || null });
       alert(`Failed to save ${field}: ${err.message}`);
     } finally {
@@ -523,6 +559,7 @@ document
     }
   }
 
+  /** Binds double-click/edit keyboard/blur handlers for editable table cells. */
   function initInlineEditing() {
     if (!tbody) return;
     tbody.addEventListener("dblclick", (e) => {
@@ -556,6 +593,7 @@ document
   }
 
   // ---------------- search (client-side, cached) ----------------
+  /** Applies all-field or prefix-based (`pd:`/`ed:`) filtering to row data. */
   function filterRowsByQuery(rows, q) {
     if (!q) return rows;
     let raw = q.trim().toLowerCase();
@@ -583,6 +621,7 @@ document
     return rows.filter((r) => getter(r).includes(raw));
   }
 
+  /** Reads search text and re-renders filtered rows/cards for wholesale view. */
   function applySearchRender() {
     const input = document.getElementById("search_customer");
     currentQuery = (input?.value || "").trim();
@@ -603,6 +642,7 @@ document
     }
   }
 
+  /** Wires search input events with debounce and enter-to-search behavior. */
   function setupCustomerSearch() {
     const input = document.getElementById("search_customer");
     if (!input) return;
@@ -637,6 +677,7 @@ document
   }
 
   // ---------------- TABLE RENDER (desktop) ----------------
+  /** Appends the next paged chunk of desktop table rows. */
   function appendNextChunkTable() {
     if (!tbody) return;
     if (renderedCountTable >= flatRowsTable.length) return;
@@ -666,6 +707,7 @@ document
     }
   }
 
+  /** Initializes and progressively renders the desktop table viewport. */
   function renderRowsProgressive(rows) {
     if (!tbody) return;
 
@@ -702,6 +744,7 @@ document
   }
 
   // ---------------- CARD RENDER (mobile) ----------------
+  /** Appends the next paged chunk of mobile cards. */
   function appendNextChunkCards() {
     if (!subsList) return;
     if (renderedCountCards >= flatRowsCards.length) return;
@@ -729,7 +772,7 @@ document
 
         <div class="subs-row subs-name">
           <span class="subs-label">Name:</span>
-          <span>${name}</span>
+          <span class="subs-customer-value" title="${name}">${name}</span>
         </div>
         <div class="subs-row subs-name">
           <span class="subs-label">Email:</span>
@@ -766,6 +809,7 @@ document
     }
   }
 
+  /** Initializes and progressively renders the mobile card viewport. */
   function renderCardsProgressive(rows) {
     if (!subsList) return;
 
@@ -799,6 +843,7 @@ document
   }
 
   // ---------------- Viewport dispatcher ----------------
+  /** Ensures desktop/mobile containers match current media query state. */
   function setContainersForViewport() {
     // Optional: enforce visibility to avoid CSS conflicts
     if (tableWrap)
@@ -806,6 +851,7 @@ document
     if (subsList) subsList.style.display = MQ_MOBILE.matches ? "block" : "none";
   }
 
+  /** Dispatches rendering to desktop table or mobile cards. */
   function renderViewport(rows) {
     setContainersForViewport();
     if (MQ_MOBILE.matches) {
@@ -816,16 +862,45 @@ document
   }
 
   // ---------------- data ----------------
-  async function fetchSalesFromNetwork() {
-    const r = await fetch(API_LIST_URL, {
-      headers: { Accept: "application/json" },
-    });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok || !json.success)
-      throw new Error(json.error || `HTTP ${r.status}`);
-    return json.data || [];
+  /** Fetches latest wholesale sales rows from API. */
+  async function fetchSalesFromNetwork(etag = null) {
+    let cursor = null;
+    let firstEtag = etag || null;
+    let isFirst = true;
+    const all = [];
+
+    while (true) {
+      const params = new URLSearchParams();
+      params.set("limit", String(API_FETCH_LIMIT));
+      if (cursor) params.set("cursor", cursor);
+      const headers = { Accept: "application/json" };
+      if (isFirst && etag) headers["If-None-Match"] = etag;
+
+      const r = await fetch(`${API_LIST_URL}?${params.toString()}`, { headers });
+      if (isFirst && r.status === 304) {
+        return { notModified: true, data: null, etag };
+      }
+
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok || !json.success) throw new Error(json.error || `HTTP ${r.status}`);
+
+      const pageRows = Array.isArray(json.data) ? json.data : [];
+      all.push(...pageRows);
+      if (isFirst) firstEtag = r.headers.get("ETag");
+
+      const meta = json.meta || {};
+      const hasMore = !!meta.has_more;
+      const nextCursor = meta.next_cursor || null;
+      if (!hasMore || !nextCursor) break;
+
+      cursor = nextCursor;
+      isFirst = false;
+    }
+
+    return { notModified: false, data: all, etag: firstEtag };
   }
 
+  /** Loads rows from cache/network and renders active viewport. */
   async function loadSales() {
     // Start loading with minimum 1 second display
     const loadingStartTime = Date.now();
@@ -846,18 +921,20 @@ document
       subsList.innerHTML = `<article class="subs-card"><div class="subs-row">Loading…</div></article>`;
     }
 
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
+    const cachePacket = readCachePacket();
+    if (cachePacket.data) {
       try {
-        const data = JSON.parse(cached);
+        const data = cachePacket.data;
         allRows = Array.isArray(data) ? data : [];
         allRows.forEach(buildSearchKey);
         renderViewport(filterRowsByQuery(allRows, currentQuery));
 
         // background refresh
-        fetchSalesFromNetwork()
-          .then((fresh) => {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify(fresh));
+        fetchSalesFromNetwork(cachePacket.etag)
+          .then((freshResult) => {
+            if (freshResult.notModified) return;
+            const fresh = freshResult.data || [];
+            writeCachePacket(fresh, freshResult.etag || null);
             allRows = Array.isArray(fresh) ? fresh : [];
             allRows.forEach(buildSearchKey);
             renderViewport(filterRowsByQuery(allRows, currentQuery));
@@ -886,8 +963,9 @@ document
     }
 
     try {
-      const fresh = await fetchSalesFromNetwork();
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify(fresh));
+      const freshResult = await fetchSalesFromNetwork();
+      const fresh = freshResult.data || [];
+      writeCachePacket(fresh, freshResult.etag || null);
       allRows = Array.isArray(fresh) ? fresh : [];
       allRows.forEach(buildSearchKey);
       renderViewport(filterRowsByQuery(allRows, currentQuery));
@@ -926,6 +1004,7 @@ document
     }
   }
 
+  /** Clears cached rows and performs a full reload from API/cache flow. */
   function refreshCacheAndReload() {
     sessionStorage.removeItem(CACHE_KEY);
     return loadSales();
@@ -1021,291 +1100,3 @@ document
   window.refreshWsSalesTable = refreshCacheAndReload;
 })();
 
-/* -----------------------------
-   Add Sale form: validation + insert + cache refresh
------------------------------ */
-(async () => {
-  const $ = (id) => document.getElementById(id);
-
-  // Get the wholesale form
-  const form = document.querySelector("#add_ws_sales .inputSalesForm form");
-  if (!form) return;
-
-  const elProduct = $("ws_product");
-  const elCustomer = $("ws_customer");
-  const elEmail = $("ws_email");
-  const elPurchase = $("ws_purchase_date");
-  const elSeller = $("ws_seller");
-  const elAmount = $("ws_amount");
-  const elNotes = $("ws_Notes");
-  const elRenew = $("ws_renew");
-  const elDuration = $("ws_duration");
-  const elEndDate = $("ws_end_date");
-  const elQuantity = $("ws_quantity");
-  const saveBtn = form.querySelector('button[type="submit"]');
-  const feedback = $("feedback_addWsSale");
-
-  const setDanger = (el, on) => {
-    if (!el) return;
-    el.classList.toggle("text-danger", !!on);
-    const label = el.id
-      ? document.querySelector(`label[for="${el.id}"]`)
-      : null;
-    if (label) label.classList.toggle("text-danger", !!on);
-  };
-  const toInt = (v) => (v === "" || v == null ? NaN : parseInt(v, 10));
-  const toMoney = (v) =>
-    v === "" || v == null ? NaN : Math.round(Number(v) * 100) / 100;
-
-  function computeEndDate(ymd, months) {
-    if (!ymd || !Number.isFinite(months)) return "";
-    const [y, m, d] = ymd.split("-").map(Number);
-    if (!y || !m || !d) return "";
-    const start = new Date(Date.UTC(y, m - 1, d));
-    const target = new Date(start);
-    const origDay = target.getUTCDate();
-    target.setUTCDate(1);
-    target.setUTCMonth(target.getUTCMonth() + months);
-    const lastDay = new Date(
-      Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)
-    ).getUTCDate();
-    target.setUTCDate(Math.min(origDay, lastDay));
-    const yy = target.getUTCFullYear();
-    const mm = String(target.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(target.getUTCDate()).padStart(2, "0");
-    return `${yy}-${mm}-${dd}`;
-  }
-
-  function setBtn(valid) {
-    if (!saveBtn) return;
-    saveBtn.disabled = !valid;
-    saveBtn.classList.toggle("disableBtn", !valid);
-  }
-  function showFeedback(msg, ok = true) {
-    if (!feedback) return;
-    feedback.textContent = msg;
-    feedback.style.color = ok ? "white" : "red";
-    feedback.style.display = "block";
-  }
-
-  // Product options
-  const OPTIONS_URL = "./api/ws_product_options.php"; // adjust if different
-  async function loadProductOptions() {
-    try {
-      const r = await fetch(OPTIONS_URL, {
-        headers: { Accept: "application/json" },
-        method: "POST",
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!elProduct) return;
-      elProduct.replaceChildren(new Option("Choose...", "", true, false));
-      if (data.status === "success" && Array.isArray(data.products)) {
-        for (const p of data.products) {
-          const opt = new Option(p.product_name, p.product_id);
-          opt.dataset.duration = p.duration; // months
-          opt.dataset.price = p.retail_price; // retail
-          opt.dataset.wcPrice = p.wc_price; // wholesale
-          opt.dataset.renew = String(p.renew); // <-- keep 0/1/2/3/4/5/12
-          elProduct.add(opt);
-        }
-      }
-    } catch {
-      // optional: toast/log
-    }
-  }
-
-  // Validation
-  function validate() {
-    const opt = elProduct?.selectedOptions?.[0];
-    const hasProduct = !!(opt && opt.value && !opt.disabled);
-    setDanger(elProduct, !hasProduct);
-
-    const customer = (elCustomer?.value || "").trim();
-    setDanger(elCustomer, !customer);
-
-    const pdate = elPurchase?.value;
-    setDanger(elPurchase, !pdate);
-
-    const valid = !!(hasProduct && customer && pdate);
-    setBtn(valid);
-    return valid;
-  }
-
-  function onProductChange() {
-    const opt = elProduct?.selectedOptions?.[0];
-    if (!opt || !opt.value) {
-      if (elRenew) elRenew.value = "";
-      if (elDuration) elDuration.value = "";
-      if (elEndDate) elEndDate.value = "";
-      setBtn(false);
-      return;
-    }
-
-    const duration = toInt(opt.dataset.duration);
-    const renewInt = toInt(opt.dataset.renew);
-
-    if (elRenew)
-      elRenew.value = Number.isInteger(renewInt) ? String(renewInt) : "0";
-    if (elDuration)
-      elDuration.value = Number.isFinite(duration) ? String(duration) : "";
-
-    if (elEndDate) {
-      elEndDate.value =
-        elPurchase?.value && Number.isFinite(duration)
-          ? computeEndDate(elPurchase.value, duration)
-          : "";
-    }
-
-    validate();
-  }
-
-  function onPurchaseDateChange() {
-    const opt = elProduct?.selectedOptions?.[0];
-    const duration = toInt(elDuration?.value) || toInt(opt?.dataset.duration);
-    if (elEndDate) {
-      elEndDate.value =
-        elPurchase?.value && Number.isFinite(duration)
-          ? computeEndDate(elPurchase.value, duration)
-          : "";
-    }
-    validate();
-  }
-
-  // Init
-  // On page refresh, always use today's date as default
-  if (elPurchase && !elPurchase.value) {
-    elPurchase.value = todayDate();
-  }
-  await loadProductOptions();
-  validate();
-
-  elProduct?.addEventListener("change", onProductChange);
-  elCustomer?.addEventListener("input", validate);
-  elPurchase?.addEventListener("change", (e) => {
-    // Save the user's chosen date to localStorage
-    if (e.target.value) {
-      localStorage.setItem("ws_preferred_purchase_date", e.target.value);
-    }
-    onPurchaseDateChange();
-  });
-
-  // Submit
-  // Allowed renew integers for sales insert
-  const ALLOWED_RENEW_SALE = new Set([0, 1, 2, 3, 4, 5, 6, 12]);
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    const opt = elProduct.selectedOptions[0];
-    const saleName = opt.textContent.trim();
-    const duration = toInt(elDuration?.value) || toInt(opt.dataset.duration);
-    const quantity = toInt(elQuantity?.value) || 1;
-    const retail = toMoney(opt.dataset.price);
-    const wholesale = toMoney(opt.dataset.wcPrice);
-    const typedAmt = toMoney(elAmount?.value);
-
-    let price, profit;
-    if (Number.isFinite(typedAmt)) {
-      price = typedAmt * quantity;
-      profit = Number.isFinite(wholesale)
-        ? Math.round((typedAmt - wholesale) * quantity * 100) / 100
-        : null;
-    } else {
-      price = Number.isFinite(retail) ? retail * quantity : null;
-      profit =
-        Number.isFinite(wholesale) && Number.isFinite(retail)
-          ? Math.round((retail - wholesale) * quantity * 100) / 100
-          : null;
-    }
-
-    if (price == null || profit == null) {
-      showFeedback(
-        "Missing product pricing data to compute price/profit.",
-        false
-      );
-      return;
-    }
-
-    // before payload:
-    const chosenRenew = toInt(elRenew?.value);
-    const productRenew = toInt(elProduct?.selectedOptions?.[0]?.dataset?.renew);
-    const finalRenew = ALLOWED_RENEW_SALE.has(chosenRenew)
-      ? chosenRenew
-      : ALLOWED_RENEW_SALE.has(productRenew)
-      ? productRenew
-      : 0;
-
-    // payload:
-    const payload = {
-      sale_product: saleName,
-      duration: Number.isFinite(duration) ? duration : null,
-      quantity: quantity,
-      renew: finalRenew, // strict integer, never boolean
-      customer: (elCustomer?.value || "").trim(),
-      email: (elEmail?.value || "").trim() || null,
-      purchased_date: elPurchase?.value,
-      expired_date: elEndDate?.value || null,
-      manager: (elSeller?.value || "").trim() || null,
-      note: (elNotes?.value || "").trim() || null,
-      price,
-      profit,
-    };
-
-    try {
-      showFeedback("Saving...", true);
-      if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.classList.add("disableBtn");
-      }
-
-      const resp = await fetch("api/ws_sale_insertion.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const json = await resp.json().catch(() => ({}));
-
-      if (resp.status === 422) {
-        const msg = json.errors
-          ? Object.values(json.errors).join(" | ")
-          : "Validation failed.";
-        throw new Error(msg);
-      }
-      if (!resp.ok || !json.success)
-        throw new Error(json.error || `HTTP ${resp.status}`);
-
-      showFeedback("Successfully Saved", true);
-      setTimeout(() => {
-        if (feedback) feedback.style.display = "none";
-        if (window.hideWholesaleForm) window.hideWholesaleForm();
-      }, 800);
-
-      // refresh table/cards (cache invalidation inside)
-      if (typeof window.refreshWsSalesTable === "function") {
-        await window.refreshWsSalesTable();
-      }
-
-      // Reset fields
-      form.reset();
-      if (elProduct) elProduct.selectedIndex = 0;
-      // Use saved preferred date or today's date as fallback
-      const savedDate = localStorage.getItem("ws_preferred_purchase_date");
-      if (elPurchase) elPurchase.value = savedDate || todayDate();
-      if (elEndDate) elEndDate.value = "";
-      if (elQuantity) elQuantity.value = "1";
-      validate();
-    } catch (err) {
-      console.error("Sale save failed:", err);
-      showFeedback(`Save failed: ${err.message}`, false);
-    } finally {
-      if (saveBtn) {
-        saveBtn.disabled = false;
-        saveBtn.classList.remove("disableBtn");
-      }
-    }
-  });
-})();

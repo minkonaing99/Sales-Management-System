@@ -88,9 +88,14 @@ try {
     $note           = $trimOrNull($data['note'] ?? null);
     $priceStr       = $toDecStr($data['price'] ?? null);
     $profitStr      = $toDecStr($data['profit'] ?? null);
+    $store          = $toInt($data['store'] ?? null);
 
     // Validate
     $errors = [];
+
+    if (!in_array($store, [0, 1, 2, 3, 4, 5], true)) {
+        $errors['store'] = 'Invalid store selected.';
+    }
 
     if (!$sale_product) {
         $errors['sale_product'] = 'Product is required.';
@@ -153,9 +158,9 @@ try {
     // Insert
     $sql = "
         INSERT INTO sale_overview
-            (sale_product, duration, renew, customer, email, purchased_date, expired_date, manager, note, price, profit)
+            (sale_product, duration, renew, customer, email, purchased_date, expired_date, manager, note, price, profit, store)
         VALUES
-            (:sale_product, :duration, :renew, :customer, :email, :purchased_date, :expired_date, :manager, :note, :price, :profit)
+            (:sale_product, :duration, :renew, :customer, :email, :purchased_date, :expired_date, :manager, :note, :price, :profit, :store)
     ";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
@@ -169,7 +174,8 @@ try {
         ':manager'        => $manager,
         ':note'           => $note,
         ':price'          => $priceStr,
-        ':profit'         => $profitStr
+        ':profit'         => $profitStr,
+        ':store'          => $store
     ]);
 
     $id = (int)$pdo->lastInsertId();

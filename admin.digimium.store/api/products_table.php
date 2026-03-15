@@ -13,6 +13,12 @@ header('X-Content-Type-Options: nosniff');
 require __DIR__ . '/dbinfo.php';
 
 try {
+    $hasStoreCol = (bool)$pdo
+        ->query("SHOW COLUMNS FROM products_catalog LIKE 'store'")
+        ->fetch(PDO::FETCH_ASSOC);
+
+    $storeSelect = $hasStoreCol ? "store" : "0 AS store";
+
     // Pull raw int plus a computed boolean for a painless shim
     $stmt = $pdo->query("
         SELECT 
@@ -24,7 +30,8 @@ try {
             wholesale,
             retail,
             note,
-            link
+            link,
+            {$storeSelect}
         FROM products_catalog
         ORDER BY product_name ASC
     ");
@@ -35,13 +42,14 @@ try {
         // Integers
         $r['product_id'] = isset($r['product_id']) ? (int)$r['product_id'] : null;
         $r['duration']   = isset($r['duration']) ? (int)$r['duration'] : null;
+        $r['store']      = isset($r['store']) ? (int)$r['store'] : 0;
 
         // Keep raw int for new code…
         $r['renew_int']  = isset($r['renew_int']) ? (int)$r['renew_int'] : 0;
 
         // …and expose legacy boolean for existing UI
         // (cast via int; strings like "0"/"1" are common from PDO)
-        $r['renew']      = isset($r['renew_bool']) ? ((int)$r['renew_bool'] === 1) : false;
+        $r['renew']      = ((int)$r['renew_int'] === 1);
 
         // Money as numbers
         $r['wholesale']  = isset($r['wholesale']) ? (float)$r['wholesale'] : 0.0;
@@ -53,7 +61,6 @@ try {
         $r['link']       = $r['link'] ?? null;
 
         // Drop the helper column from output
-        unset($r['renew_bool']);
     }
     unset($r);
 

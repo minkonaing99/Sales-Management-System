@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+// Product catalog management page for both retail and wholesale products.
+// Retail/wholesale tab switching is UI-only; each tab calls its own API set.
+// See `js/product_catalog.js` and `js/ws_product_catalog.js` for data flows.
 require __DIR__ . '/api/session_bootstrap.php';
 require __DIR__ . '/api/auth.php';
 
